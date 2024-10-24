@@ -27,12 +27,12 @@
     ],
     "experiment": "dcache_configurations",
     "configurations": {
-        "config_1": "--dcache_size 32KiB --dcache_assoc 4",
-        "config_2": "--dcache_size 4KiB --dcache_assoc 1",
-        "config_3": "--dcache_size 4KiB --dcache_assoc 4",
-        "config_4": "--dcache_size 4KiB --dcache_assoc 64",
-        "config_5": "--dcache_size 256KiB --dcache_assoc 1",
-        "config_6": "--dcache_size 256KiB --dcache_assoc 4",
-        "config_7": "--dcache_size 256KiB --dcache_assoc 64"
+        "s32a4": "--dcache_size 32KiB --dcache_assoc 4",
+        "s4a1": "--dcache_size 4KiB --dcache_assoc 1",
+        "s4a4": "--dcache_size 4KiB --dcache_assoc 4",
+        "s4a64": "--dcache_size 4KiB --dcache_assoc 64",
+        "s256a1": "--dcache_size 256KiB --dcache_assoc 1",
+        "s265a4": "--dcache_size 256KiB --dcache_assoc 4",
+        "s256a64": "--dcache_size 256KiB --dcache_assoc 64"
     }
 }
