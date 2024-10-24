@@ -33,6 +33,6 @@
         "config_4": "--dcache_size 4KiB --dcache_assoc 64",
         "config_5": "--dcache_size 256KiB --dcache_assoc 1",
         "config_6": "--dcache_size 256KiB --dcache_assoc 4",
-        "config_7": "--dcache_size 256KiB --dcache_assoc 64",
+        "config_7": "--dcache_size 256KiB --dcache_assoc 64"
     }
 }
