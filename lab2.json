@@ -25,14 +25,14 @@
         "554.roms_r",
         "557.xz_r"
     ],
-    "experiment": "dcache_configurations",
+    "experiment": "lab1",
     "configurations": {
-        "s32a4": "--dcache_size 32KiB --dcache_assoc 4",
-        "s4a1": "--dcache_size 4KiB --dcache_assoc 1",
-        "s4a4": "--dcache_size 4KiB --dcache_assoc 4",
-        "s4a64": "--dcache_size 4KiB --dcache_assoc 64",
-        "s256a1": "--dcache_size 256KiB --dcache_assoc 1",
-        "s265a4": "--dcache_size 256KiB --dcache_assoc 4",
-        "s256a64": "--dcache_size 256KiB --dcache_assoc 64"
+        "s32a4": "--dcache_size 32768 --dcache_assoc 4",
+        "s4a1": "--dcache_size 4096 --dcache_assoc 1",
+        "s4a4": "--dcache_size 4096 --dcache_assoc 4",
+        "s4a64": "--dcache_size 4096 --dcache_assoc 64",
+        "s256a1": "--dcache_size 262144 --dcache_assoc 1",
+        "s265a4": "--dcache_size 262144 --dcache_assoc 4",
+        "s256a64": "--dcache_size 262144 --dcache_assoc 64"
     }
 }
