@@ -68,8 +68,8 @@ def plot_data(benchmarks, data, ylabel_name, fig_name, ylim=None):
   print(data)
   colors = ['#800000', '#911eb4', '#4363d8', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
   ind = np.arange(len(benchmarks))
-  width = 0.18
-  fig, ax = plt.subplots(figsize=(14, 4.4), dpi=80)
+  width = 0.12
+  fig, ax = plt.subplots(figsize=(19, 4.4), dpi=80)
   num_keys = len(data.keys())
 
   idx = 0
