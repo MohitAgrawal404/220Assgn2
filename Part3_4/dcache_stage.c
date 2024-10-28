@@ -367,6 +367,21 @@ void update_dcache_stage(Stage_Data* src_sd) {
         wake_up_ops(op, REG_DATA_DEP, model->wake_hook);
       }
     } else {  // data cache miss
+        if (line == NULL && !op->oracle_info.dcmiss) {
+            // Check if this is a compulsory miss
+          if (!cache_line_accessed_before(line_addr)) {
+            STAT_EVENT(op->proc_id, COMPULSORY_MISS);
+          } 
+          // Conflict miss check
+          else if (cache_line_exists_at_other_index(line_addr)) {
+            STAT_EVENT(op->proc_id, CONFLICT_MISS);
+          }
+        }
+        // Check for capacity miss if it's not a compulsory or conflict miss
+        else if (cache_full() && !cache_line_exists_in_other_levels(line_addr)) {
+          STAT_EVENT(op->proc_id, CAPACITY_MISS);
+        }
+         
       if(op->table_info->mem_type == MEM_ST)
         STAT_EVENT(op->proc_id, POWER_DCACHE_WRITE_MISS);
       else
