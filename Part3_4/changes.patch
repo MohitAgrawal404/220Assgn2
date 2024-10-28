@@ -1,0 +1,151 @@
+diff --git a/src/PARAMS.sunny_cove b/src/PARAMS.sunny_cove
+index e91ba4b..c722b98 100644
+--- a/src/PARAMS.sunny_cove
++++ b/src/PARAMS.sunny_cove
+@@ -138,7 +138,7 @@
+ 
+ ### prefetcher
+ # Kept same as Kaby Lake
+---pref_framework_on             1
++--pref_framework_on             0
+ --pref_stream_on                1
+ --pref_train_on_pref_misses     0
+ --pref_oracle_train             0
+diff --git a/src/dcache_stage.c b/src/dcache_stage.c
+index b1a8933..7da47a0 100644
+--- a/src/dcache_stage.c
++++ b/src/dcache_stage.c
+@@ -92,6 +92,8 @@ void init_dcache_stage(uns8 proc_id, const char* name) {
+   /* initialize the cache structure */
+   init_cache(&dc->dcache, "DCACHE", DCACHE_SIZE, DCACHE_ASSOC, DCACHE_LINE_SIZE,
+              sizeof(Dcache_Data), DCACHE_REPL);
++  init_cache(&dc->andy_cache, "DCACHE_FAKE", DCACHE_SIZE, DCACHE_SIZE / DCACHE_LINE_SIZE, DCACHE_LINE_SIZE,
++             sizeof(Dcache_Data), DCACHE_REPL);//fully assoc means DCACHE_ASSOC == DCACHE_SIZE / DCACHE_LINE_SIZE??
+ 
+   reset_dcache_stage();
+ 
+@@ -104,6 +106,7 @@ void init_dcache_stage(uns8 proc_id, const char* name) {
+   }
+ 
+   dc->dcache.repl_pref_thresh = DCACHE_REPL_PREF_THRESH;
++  dc->andy_cache.repl_pref_thresh = DCACHE_REPL_PREF_THRESH;
+ 
+   if(DC_PREF_CACHE_ENABLE)
+     init_cache(&dc->pref_dcache, "DC_PREF_CACHE", DC_PREF_CACHE_SIZE,
+@@ -111,6 +114,8 @@ void init_dcache_stage(uns8 proc_id, const char* name) {
+                DCACHE_REPL);
+ 
+   memset(dc->rand_wb_state, 0, NUM_ELEMENTS(dc->rand_wb_state));
++
++  init_hash_table(&dc->accessed_blocks, "andy_table", DCACHE_SIZE / DCACHE_LINE_SIZE, sizeof(int));
+ }
+ 
+ 
+@@ -286,6 +291,16 @@ void update_dcache_stage(Stage_Data* src_sd) {
+ 
+     line = (Dcache_Data*)cache_access(&dc->dcache, op->oracle_info.va,
+                                       &line_addr, TRUE);
++
++    Addr fake_line_addr;
++    Dcache_Data* fake_line = (Dcache_Data*)cache_access(&dc->andy_cache, op->oracle_info.va,
++							&fake_line_addr, TRUE);
++
++    int64 block_num = (op->oracle_info.va & ~(dc->dcache.offset_mask)) >> dc->dcache.shift_bits;
++    Flag made_new_entry;
++    hash_table_access_create(&dc->accessed_blocks, block_num, &made_new_entry);
++    bool was_accessed_before = (made_new_entry == FALSE);
++
+     op->dcache_cycle = cycle_count;
+     dc->idle_cycle   = MAX2(dc->idle_cycle, cycle_count + DCACHE_CYCLES);
+ 
+@@ -427,6 +442,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+ 
+           if(!op->off_path) {
+             STAT_EVENT(op->proc_id, DCACHE_MISS);
++	    if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
++	    }
++	    if(!was_accessed_before){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }
+             STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
+             STAT_EVENT(op->proc_id, DCACHE_MISS_LD_ONPATH);
+             op->oracle_info.dcmiss = TRUE;
+@@ -482,6 +503,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+ 
+           if(!op->off_path) {
+             STAT_EVENT(op->proc_id, DCACHE_MISS);
++	    if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
++	    }
++	    if(!was_accessed_before){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }
+             STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
+             STAT_EVENT(op->proc_id, DCACHE_MISS_LD_ONPATH);
+             op->oracle_info.dcmiss = TRUE;
+@@ -540,6 +567,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+ 
+           if(!op->off_path) {
+             STAT_EVENT(op->proc_id, DCACHE_MISS);
++	    if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
++	    }
++	    if(!was_accessed_before){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }
+             STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
+             STAT_EVENT(op->proc_id, DCACHE_MISS_ST_ONPATH);
+             op->oracle_info.dcmiss = TRUE;
+@@ -675,6 +708,9 @@ Flag dcache_fill_line(Mem_Req* req) {
+       STAT_EVENT(dc->proc_id, DCACHE_WB_REQ);
+     }
+ 
++    Dcache_Data* poo = (Dcache_Data*)cache_insert(&dc->andy_cache, dc->proc_id, req->addr,
++						  &line_addr, &repl_line_addr);
++    (void) poo;
+     data = (Dcache_Data*)cache_insert(&dc->dcache, dc->proc_id, req->addr,
+                                       &line_addr, &repl_line_addr);
+     DEBUG(dc->proc_id,
+diff --git a/src/dcache_stage.h b/src/dcache_stage.h
+index c404070..ca58277 100644
+--- a/src/dcache_stage.h
++++ b/src/dcache_stage.h
+@@ -31,6 +31,7 @@
+ 
+ #include "libs/cache_lib.h"
+ #include "stage_data.h"
++#include "libs/hash_lib.h"
+ 
+ /**************************************************************************************/
+ /* Forward Declarations */
+@@ -46,6 +47,7 @@ typedef struct Dcache_Stage_struct {
+   Stage_Data sd; /* stage interface data */
+ 
+   Cache  dcache;      /* the data cache */
++  Cache  andy_cache;  /* Fully associative cache for keeping track of capacity misses */
+   Ports* ports;       /* read and write ports to the data cache (per bank) */
+   Cache  pref_dcache; /* prefetcher cache for data cache */
+ 
+@@ -54,6 +56,8 @@ typedef struct Dcache_Stage_struct {
+ 
+   char rand_wb_state[31]; /* state of random number generator for random
+                              writebacks */
++
++  Hash_Table accessed_blocks;
+ } Dcache_Stage;
+ 
+ 
+diff --git a/src/memory/memory.stat.def b/src/memory/memory.stat.def
+index 718773a..65f7ede 100644
+--- a/src/memory/memory.stat.def
++++ b/src/memory/memory.stat.def
+@@ -342,6 +342,8 @@ DEF_STAT(  UOP_CACHE_PREFETCH_PW_LENGTH_24            , DIST    , NO_RATIO)
+ 
+      /* these three are on path */
+ DEF_STAT(  DCACHE_MISS		   , DIST  , NO_RATIO  )
++DEF_STAT(  DCACHE_MISS_CAPACITY	   , COUNT , NO_RATIO  )
++DEF_STAT(  DCACHE_MISS_COMPULSURY  , COUNT , NO_RATIO  )
+ DEF_STAT(  DCACHE_ST_BUFFER_HIT	   , COUNT , NO_RATIO  )
+ DEF_STAT(  DCACHE_HIT		   , DIST  , NO_RATIO  )
+ 
