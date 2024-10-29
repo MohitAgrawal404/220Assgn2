@@ -118,9 +118,13 @@ def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
     ax.set_xticks(ind + width * (num_configs / 2 - 0.5))  # Center the tick labels
     ax.set_xticklabels(benchmarks, rotation=90)
 
-    handles, labels = ax.get_legend_handles_labels()
-    unique_labels = dict(zip(labels, handles))
-    ax.legend(unique_labels.values(), unique_labels.keys())
+    custom_handles = [
+            plt.Rectangle((0, 0), 1, 1, color='red', label='Capacity Miss'),
+            plt.Rectangle((0, 0), 1, 1, color='green', label='Compulsory Miss'),
+            plt.Rectangle((0, 0), 1, 1, color='blue', label='Conflict Miss')
+        ]
+        
+    ax.legend(handles=custom_handles, loc='upper right', title="Cache Miss Types")
 
     # Optional: Set the y-limit if provided
     if ylim is not None:
