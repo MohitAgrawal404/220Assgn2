@@ -5,8 +5,6 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
-from matplotlib import cm
 
 matplotlib.rc('font', size=14)
 
@@ -23,86 +21,86 @@ def read_descriptor_from_json(descriptor_filename):
         print(f"Error decoding JSON in file '{descriptor_filename}': {e}")
         return None
 
-def plot_metric(descriptor_data, sim_path, csv_name, output_file, csv_line_match, plot_title):
-  benchmarks_org = descriptor_data["workloads_list"].copy()
-  benchmarks = []
-  ipc = {}
+def parse_cache_misses(lines):
+    capacity, compulsory, total = 0, 0, 0
+    for line in lines:
+        tokens = [x.strip() for x in line.split(',')]
+        if "DCACHE_MISS_CAPACITY" in line:
+            capacity = float(tokens[1])
+        elif "DCACHE_MISS_COMPULSORY" in line:
+            compulsory = float(tokens[1])
+        elif "DCACHE_MISS" in line:
+            total = float(tokens[1])
+    conflict = total - (capacity + compulsory)
+    return capacity, compulsory, conflict
 
-  try:
-    for config_key in descriptor_data["configurations"].keys():
-      ipc_config = []
-      avg_IPC_config = 0.0
-      cnt_benchmarks = 0
-      for benchmark in benchmarks_org:
-        benchmark_name = benchmark.split("/")
-        exp_path = sim_path+'/'+benchmark+'/'+descriptor_data["experiment"]+'/'
-        IPC = 0
-        with open(os.path.join(exp_path, config_key, csv_name)) as f:
-          lines = f.readlines()
-          for line in lines:
-            if csv_line_match in line:
-              tokens = [x.strip() for x in line.split(',')]
-              IPC = float(tokens[1])
-              break
+def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
+    benchmarks_org = descriptor_data["workloads_list"].copy()
+    benchmarks = []
+    cache_miss_data = {
+        "Capacity Miss": [],
+        "Compulsory Miss": [],
+        "Conflict Miss": []
+    }
 
-        avg_IPC_config += IPC
+    try:
+        for config_key in descriptor_data["configurations"].keys():
+            for benchmark in benchmarks_org:
+                benchmark_name = benchmark.split("/")
+                exp_path = sim_path+'/'+benchmark+'/'+descriptor_data["experiment"]+'/'
+                capacity, compulsory, conflict = 0, 0, 0
+                with open(os.path.join(exp_path, config_key, csv_name)) as f:
+                    lines = f.readlines()
+                    capacity, compulsory, conflict = parse_cache_misses(lines)
 
-        cnt_benchmarks = cnt_benchmarks + 1
-        if len(benchmarks_org) > len(benchmarks):
-          benchmarks.append(benchmark_name)
+                if len(benchmarks_org) > len(benchmarks):
+                    benchmarks.append(benchmark_name)
 
-        ipc_config.append(IPC)
+                cache_miss_data["Capacity Miss"].append(capacity)
+                cache_miss_data["Compulsory Miss"].append(compulsory)
+                cache_miss_data["Conflict Miss"].append(conflict)
 
-      num = len(benchmarks)
-      print(benchmarks)
-      ipc_config.append(avg_IPC_config/num)
-      ipc[config_key] = ipc_config
+        plot_data(benchmarks, cache_miss_data, plot_title, output_file)
 
-    benchmarks.append('Avg')
-    plot_data(benchmarks, ipc, plot_title, output_file)
-
-  except Exception as e:
-    print(e)
+    except Exception as e:
+        print(e)
 
 def plot_data(benchmarks, data, ylabel_name, fig_name, ylim=None):
-  print(data)
-  colors = ['#800000', '#911eb4', '#4363d8', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
-  ind = np.arange(len(benchmarks))
-  width = 0.12
-  fig, ax = plt.subplots(figsize=(19, 4.4), dpi=80)
-  num_keys = len(data.keys())
+    print(data)
+    colors = ['#800000', '#4363d8', '#f58231']
+    ind = np.arange(len(benchmarks))
+    width = 0.5  # Adjusted width for stacked bars
 
-  idx = 0
-  start_id = -int(num_keys/2)
-  for key in data.keys():
-    hatch=''
-    if idx % 2:
-      hatch='\\\\'
-    else:
-      hatch='///'
-    ax.bar(ind + (start_id+idx)*width, data[key], width=width, fill=False, hatch=hatch, color=colors[idx], edgecolor=colors[idx], label=key)
-    idx += 1
-  ax.set_xlabel("Benchmarks")
-  ax.set_ylabel(ylabel_name)
-  ax.set_xticks(ind)
-  ax.set_xticklabels(benchmarks, rotation = 27, ha='right')
-  ax.grid('x');
-  if ylim != None:
-    ax.set_ylim(ylim)
-  ax.legend(loc="upper left", ncols=2)
-  fig.tight_layout()
-  plt.savefig(fig_name, format="pdf", bbox_inches="tight")
+    fig, ax = plt.subplots(figsize=(19, 4.4), dpi=80)
+
+    # Plot stacked bars
+    bottom = np.zeros(len(benchmarks))
+    for idx, (key, values) in enumerate(data.items()):
+        ax.bar(ind, values, width=width, color=colors[idx], edgecolor='black', label=key, bottom=bottom)
+        bottom += np.array(values)
+
+    ax.set_xlabel("Benchmarks")
+    ax.set_ylabel(ylabel_name)
+    ax.set_xticks(ind)
+    ax.set_xticklabels(benchmarks, rotation=27, ha='right')
+    ax.grid('x')
+
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
+    ax.legend(loc="upper left", ncols=2)
+    fig.tight_layout()
+    plt.savefig(fig_name, format="pdf", bbox_inches="tight")
 
 if __name__ == "__main__":
     # Create a parser for command-line arguments
     parser = argparse.ArgumentParser(description='Read descriptor file name')
-    parser.add_argument('-o','--output_dir', required=True, help='Output path. Usage: -o /home/$USER/plot')
-    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d /home/$USER/lab1.json')
-    parser.add_argument('-s','--simulation_path', required=True, help='Simulation result path. Usage: -s /home/$USER/exp/simulations')
+    parser.add_argument('-o', '--output_dir', required=True, help='Output path. Usage: -o /home/$USER/plot')
+    parser.add_argument('-d', '--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d /home/$USER/lab1.json')
+    parser.add_argument('-s', '--simulation_path', required=True, help='Simulation result path. Usage: -s /home/$USER/exp/simulations')
 
     args = parser.parse_args()
     descriptor_filename = args.descriptor_name
 
     descriptor_data = read_descriptor_from_json(descriptor_filename)
-    plot_metric(descriptor_data, args.simulation_path, 'memory.stat.0.csv', os.path.join(args.output_dir, "IPC.pdf"), "Periodic IPC", "IPC")
-    plot_metric(descriptor_data, args.simulation_path, 'memory.stat.0.csv', os.path.join(args.output_dir, "DCACHE.pdf"), "DCACHE_MISS_pct", "DCACHE miss ratio percent")
+    plot_metric(descriptor_data, args.simulation_path, 'memory.stat.0.csv', os.path.join(args.output_dir, "DCACHE_MISS_STACKED.pdf"), "DCACHE Miss Breakdown")
