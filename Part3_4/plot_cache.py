@@ -44,69 +44,88 @@ def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
     }
 
     try:
-        # Create expanded benchmark labels that include configuration info
-        expanded_benchmarks = []
+        # Create expanded data structures for grouped plotting
+        expanded_benchmarks = benchmarks_org.copy()  # One entry per benchmark
+        grouped_cache_miss_data = {
+            "Capacity Miss": [],
+            "Compulsory Miss": [],
+            "Conflict Miss": []
+        }
 
-        for config_key in descriptor_data["configurations"].keys():
-            for benchmark in benchmarks_org:
+        # Iterate over each benchmark and configuration
+        for benchmark in benchmarks_org:
+            capacity_miss_group = []
+            compulsory_miss_group = []
+            conflict_miss_group = []
+
+            for config_key in descriptor_data["configurations"].keys():
                 benchmark_name = benchmark.split("/")[0]  # Get the first part as the benchmark name
                 exp_path = os.path.join(sim_path, benchmark, descriptor_data["experiment"], config_key)
 
-                # Initialize miss values
-                capacity, compulsory, conflict = 0, 0, 0
+                # Parse the cache miss stats
                 with open(os.path.join(exp_path, csv_name)) as f:
                     lines = f.readlines()
-                    # Parse the cache miss stats from the lines
                     capacity, compulsory, conflict = parse_cache_misses(lines)
 
-                # Append benchmark name with configuration for the expanded axis labels
-                expanded_benchmarks.append(f"{benchmark_name}-{config_key}")
+                # Collect miss data per configuration for the current benchmark
+                capacity_miss_group.append(capacity)
+                compulsory_miss_group.append(compulsory)
+                conflict_miss_group.append(conflict)
 
-                # Append miss data for each configuration per benchmark
-                cache_miss_data["Capacity Miss"].append(capacity)
-                cache_miss_data["Compulsory Miss"].append(compulsory)
-                cache_miss_data["Conflict Miss"].append(conflict)
+            # Append miss data for the benchmark (grouped by config)
+            grouped_cache_miss_data["Capacity Miss"].append(capacity_miss_group)
+            grouped_cache_miss_data["Compulsory Miss"].append(compulsory_miss_group)
+            grouped_cache_miss_data["Conflict Miss"].append(conflict_miss_group)
 
-        # Debug output
-        print(f"Total expanded benchmarks: {len(expanded_benchmarks)}")
-        print(f"Total Capacity Miss entries: {len(cache_miss_data['Capacity Miss'])}")
-        print(f"Total Compulsory Miss entries: {len(cache_miss_data['Compulsory Miss'])}")
-        print(f"Total Conflict Miss entries: {len(cache_miss_data['Conflict Miss'])}")
+        # Debug output to verify data
+        print(f"Benchmarks: {expanded_benchmarks}")
+        print(f"Capacity Miss Grouped Data: {grouped_cache_miss_data['Capacity Miss']}")
+        print(f"Compulsory Miss Grouped Data: {grouped_cache_miss_data['Compulsory Miss']}")
+        print(f"Conflict Miss Grouped Data: {grouped_cache_miss_data['Conflict Miss']}")
 
-        # Pass the expanded benchmark labels to plot_data
-        plot_data(expanded_benchmarks, cache_miss_data, plot_title, output_file)
+        # Plot the grouped data
+        plot_data(expanded_benchmarks, grouped_cache_miss_data, plot_title, output_file)
 
     except Exception as e:
         print(f"Error: {e}")
 
+def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
+    num_benchmarks = len(benchmarks)
+    num_configs = len(grouped_data["Capacity Miss"][0])  # Assuming all benchmarks have same number of configs
 
+    ind = np.arange(num_benchmarks)  # 23 benchmark groups
+    width = 0.12  # Width of each bar (smaller to accommodate multiple configurations)
 
-def plot_data(benchmarks, data, ylabel_name, fig_name, ylim=None):
-    print(data)
-    colors = ['#800000', '#4363d8', '#f58231']
-    ind = np.arange(len(benchmarks))
-    width = 0.5  # Adjusted width for stacked bars
+    # Initialize the figure and axis
+    fig, ax = plt.subplots(figsize=(19, 6))
+    
+    # For each configuration, we plot a bar for each miss type, stacked
+    for i in range(num_configs):
+        capacity_miss = [group[i] for group in grouped_data["Capacity Miss"]]
+        compulsory_miss = [group[i] for group in grouped_data["Compulsory Miss"]]
+        conflict_miss = [group[i] for group in grouped_data["Conflict Miss"]]
 
-    fig, ax = plt.subplots(figsize=(19, 4.4), dpi=80)
+        # Plot the stacked bars
+        bottom = np.zeros(num_benchmarks)
+        p1 = ax.bar(ind + i * width, capacity_miss, width, label=f'Capacity Miss - Config {i+1}', color='red')
+        p2 = ax.bar(ind + i * width, compulsory_miss, width, bottom=capacity_miss, label=f'Compulsory Miss - Config {i+1}', color='green')
+        p3 = ax.bar(ind + i * width, conflict_miss, width, bottom=np.array(capacity_miss) + np.array(compulsory_miss), label=f'Conflict Miss - Config {i+1}', color='blue')
 
-    # Plot stacked bars
-    bottom = np.zeros(len(benchmarks))
-    for idx, (key, values) in enumerate(data.items()):
-        ax.bar(ind, values, width=width, color=colors[idx], edgecolor='black', label=key, bottom=bottom)
-        bottom += np.array(values)
-
-    ax.set_xlabel("Benchmarks")
+    # Customize the labels, title, etc.
     ax.set_ylabel(ylabel_name)
-    ax.set_xticks(ind)
-    ax.set_xticklabels(benchmarks, rotation=27, ha='right')
-    ax.grid('x')
+    ax.set_xlabel("Benchmarks")
+    ax.set_title("DCache Miss Ratio (Stacked)")
+    ax.set_xticks(ind + width * (num_configs / 2 - 0.5))  # Center the tick labels
+    ax.set_xticklabels(benchmarks, rotation=90)
+    ax.legend()
 
+    # Optional: Set the y-limit if provided
     if ylim is not None:
         ax.set_ylim(ylim)
 
-    ax.legend(loc="upper left", ncols=2)
     fig.tight_layout()
     plt.savefig(fig_name, format="pdf", bbox_inches="tight")
+    plt.show()
 
 if __name__ == "__main__":
     # Create a parser for command-line arguments
