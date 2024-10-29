@@ -117,7 +117,10 @@ def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
     ax.set_title("DCache Miss Ratio (Stacked)")
     ax.set_xticks(ind + width * (num_configs / 2 - 0.5))  # Center the tick labels
     ax.set_xticklabels(benchmarks, rotation=90)
-    ax.legend()
+
+    handles, labels = ax.get_legend_handles_labels()
+    unique_labels = dict(zip(labels, handles))
+    ax.legend(unique_labels.values(), unique_labels.keys())
 
     # Optional: Set the y-limit if provided
     if ylim is not None:
