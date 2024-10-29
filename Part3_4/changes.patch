@@ -12,7 +12,7 @@ index e91ba4b..c722b98 100644
  --pref_train_on_pref_misses     0
  --pref_oracle_train             0
 diff --git a/src/dcache_stage.c b/src/dcache_stage.c
-index b1a8933..7da47a0 100644
+index b1a8933..060d5b4 100644
 --- a/src/dcache_stage.c
 +++ b/src/dcache_stage.c
 @@ -92,6 +92,8 @@ void init_dcache_stage(uns8 proc_id, const char* name) {
@@ -58,46 +58,49 @@ index b1a8933..7da47a0 100644
      op->dcache_cycle = cycle_count;
      dc->idle_cycle   = MAX2(dc->idle_cycle, cycle_count + DCACHE_CYCLES);
  
-@@ -427,6 +442,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+@@ -427,6 +442,13 @@ void update_dcache_stage(Stage_Data* src_sd) {
  
            if(!op->off_path) {
              STAT_EVENT(op->proc_id, DCACHE_MISS);
-+	    if(fake_line){
-+	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
-+	    }
 +	    if(!was_accessed_before){
 +	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }else if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CONFLICT);
++	    }else{
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
 +	    }
              STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
              STAT_EVENT(op->proc_id, DCACHE_MISS_LD_ONPATH);
              op->oracle_info.dcmiss = TRUE;
-@@ -482,6 +503,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+@@ -482,6 +504,13 @@ void update_dcache_stage(Stage_Data* src_sd) {
  
            if(!op->off_path) {
              STAT_EVENT(op->proc_id, DCACHE_MISS);
-+	    if(fake_line){
-+	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
-+	    }
 +	    if(!was_accessed_before){
 +	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }else if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CONFLICT);
++	    }else{
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
 +	    }
              STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
              STAT_EVENT(op->proc_id, DCACHE_MISS_LD_ONPATH);
              op->oracle_info.dcmiss = TRUE;
-@@ -540,6 +567,12 @@ void update_dcache_stage(Stage_Data* src_sd) {
+@@ -540,6 +569,13 @@ void update_dcache_stage(Stage_Data* src_sd) {
  
            if(!op->off_path) {
              STAT_EVENT(op->proc_id, DCACHE_MISS);
-+	    if(fake_line){
-+	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
-+	    }
 +	    if(!was_accessed_before){
 +	      STAT_EVENT(op->proc_id, DCACHE_MISS_COMPULSURY);
++	    }else if(fake_line){
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CONFLICT);
++	    }else{
++	      STAT_EVENT(op->proc_id, DCACHE_MISS_CAPACITY);
 +	    }
              STAT_EVENT(op->proc_id, DCACHE_MISS_ONPATH);
              STAT_EVENT(op->proc_id, DCACHE_MISS_ST_ONPATH);
              op->oracle_info.dcmiss = TRUE;
-@@ -675,6 +708,9 @@ Flag dcache_fill_line(Mem_Req* req) {
+@@ -675,6 +711,9 @@ Flag dcache_fill_line(Mem_Req* req) {
        STAT_EVENT(dc->proc_id, DCACHE_WB_REQ);
      }
  
@@ -137,15 +140,17 @@ index c404070..ca58277 100644
  
  
 diff --git a/src/memory/memory.stat.def b/src/memory/memory.stat.def
-index 718773a..65f7ede 100644
+index 718773a..c12a7f1 100644
 --- a/src/memory/memory.stat.def
 +++ b/src/memory/memory.stat.def
-@@ -342,6 +342,8 @@ DEF_STAT(  UOP_CACHE_PREFETCH_PW_LENGTH_24            , DIST    , NO_RATIO)
+@@ -340,6 +340,10 @@ DEF_STAT(  UOP_CACHE_PREFETCH_PW_LENGTH_22            , COUNT   , NO_RATIO)
+ DEF_STAT(  UOP_CACHE_PREFETCH_PW_LENGTH_23            , COUNT   , NO_RATIO)
+ DEF_STAT(  UOP_CACHE_PREFETCH_PW_LENGTH_24            , DIST    , NO_RATIO)
  
++DEF_STAT(  DCACHE_MISS_CONFLICT	   , DIST  , NO_RATIO  )
++DEF_STAT(  DCACHE_MISS_COMPULSURY  , COUNT , NO_RATIO  )
++DEF_STAT(  DCACHE_MISS_CAPACITY	   , DIST  , NO_RATIO  )
++
       /* these three are on path */
  DEF_STAT(  DCACHE_MISS		   , DIST  , NO_RATIO  )
-+DEF_STAT(  DCACHE_MISS_CAPACITY	   , COUNT , NO_RATIO  )
-+DEF_STAT(  DCACHE_MISS_COMPULSURY  , COUNT , NO_RATIO  )
  DEF_STAT(  DCACHE_ST_BUFFER_HIT	   , COUNT , NO_RATIO  )
- DEF_STAT(  DCACHE_HIT		   , DIST  , NO_RATIO  )
- 
