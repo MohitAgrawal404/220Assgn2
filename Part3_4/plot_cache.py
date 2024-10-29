@@ -29,9 +29,8 @@ def parse_cache_misses(lines):
             capacity = float(tokens[1])
         elif "DCACHE_MISS_COMPULSORY" in line:
             compulsory = float(tokens[1])
-        elif "DCACHE_MISS" in line:
-            total = float(tokens[1])
-    conflict = total - (capacity + compulsory)
+        elif "DCACHE_MISS_CONFLICT" in line:
+            conflict = float(tokens[1])
     return capacity, compulsory, conflict
 
 def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
@@ -125,10 +124,6 @@ def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
         ]
         
     ax.legend(handles=custom_handles, loc='upper right', title="Cache Miss Types")
-
-    # Optional: Set the y-limit if provided
-    if ylim is not None:
-        ax.set_ylim(ylim)
 
     fig.tight_layout()
     plt.savefig(fig_name, format="pdf", bbox_inches="tight")
