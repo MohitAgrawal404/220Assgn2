@@ -22,15 +22,16 @@ def read_descriptor_from_json(descriptor_filename):
         return None
 
 def parse_cache_misses(lines):
-    capacity, compulsory, total = 0, 0, 0
+    capacity, compulsory, conflict = None, None, None
     for line in lines:
         tokens = [x.strip() for x in line.split(',')]
-        if "DCACHE_MISS_CAPACITY" in line:
+        if "DCACHE_MISS_CAPACITY_count" in line:
             capacity = float(tokens[1])
-        elif "DCACHE_MISS_COMPULSORY" in line:
+        elif "DCACHE_MISS_COMPULSURY_count" in line:
             compulsory = float(tokens[1])
-        elif "DCACHE_MISS_CONFLICT" in line:
+        elif "DCACHE_MISS_CONFLICT_count" in line:
             conflict = float(tokens[1])
+    assert((capacity is not None) and (compulsory is not None) and (conflict is not None))
     return capacity, compulsory, conflict
 
 def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
