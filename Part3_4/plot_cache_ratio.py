@@ -25,11 +25,11 @@ def parse_cache_misses(lines):
     capacity, compulsory, conflict = None, None, None
     for line in lines:
         tokens = [x.strip() for x in line.split(',')]
-        if "DCACHE_MISS_CAPACITY_count" in line:
+        if "DCACHE_MISS_CAPACITY_pct" in line:
             capacity = float(tokens[1])
-        elif "DCACHE_MISS_COMPULSURY_count" in line:
+        elif "DCACHE_MISS_COMPULSURY_pct" in line:
             compulsory = float(tokens[1])
-        elif "DCACHE_MISS_CONFLICT_count" in line:
+        elif "DCACHE_MISS_CONFLICT_pct" in line:
             conflict = float(tokens[1])
     assert((capacity is not None) and (compulsory is not None) and (conflict is not None))
     return capacity, compulsory, conflict
@@ -114,7 +114,7 @@ def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
     # Customize the labels, title, etc.
     ax.set_ylabel(ylabel_name)
     ax.set_xlabel("Benchmarks")
-    ax.set_title("DCache Miss Ratio (Stacked)")
+    ax.set_title("DCache Miss Type Ratios (Stacked)")
     ax.set_xticks(ind + width * (num_configs / 2 - 0.5))  # Center the tick labels
     ax.set_xticklabels(benchmarks, rotation=90)
 
@@ -141,4 +141,4 @@ if __name__ == "__main__":
     descriptor_filename = args.descriptor_name
 
     descriptor_data = read_descriptor_from_json(descriptor_filename)
-    plot_metric(descriptor_data, args.simulation_path, 'memory.stat.0.csv', os.path.join(args.output_dir, "DCACHE_MISS_STACKED.pdf"), "DCACHE Miss Breakdown")
+    plot_metric(descriptor_data, args.simulation_path, 'memory.stat.0.csv', os.path.join(args.output_dir, "DCACHE_MISS_STACKED_RATIO.pdf"), "DCACHE Miss Type Percent")
