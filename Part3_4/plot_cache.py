@@ -46,24 +46,40 @@ def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
     try:
         for config_key in descriptor_data["configurations"].keys():
             for benchmark in benchmarks_org:
-                benchmark_name = benchmark.split("/")
-                exp_path = sim_path+'/'+benchmark+'/'+descriptor_data["experiment"]+'/'
+                benchmark_name = benchmark.split("/")[0]  # Get the first part as the benchmark name
+                exp_path = os.path.join(sim_path, benchmark, descriptor_data["experiment"], config_key)
+                
+                # Initialize the miss values
                 capacity, compulsory, conflict = 0, 0, 0
-                with open(os.path.join(exp_path, config_key, csv_name)) as f:
+                with open(os.path.join(exp_path, csv_name)) as f:
                     lines = f.readlines()
+                    # Parse the cache miss stats from the lines
                     capacity, compulsory, conflict = parse_cache_misses(lines)
 
+                # Append only unique benchmark names (not per config)
                 if len(benchmarks_org) > len(benchmarks):
                     benchmarks.append(benchmark_name)
 
+                # Append miss data for each configuration per benchmark
                 cache_miss_data["Capacity Miss"].append(capacity)
                 cache_miss_data["Compulsory Miss"].append(compulsory)
                 cache_miss_data["Conflict Miss"].append(conflict)
 
+        # Ensure benchmarks list reflects each config
+        benchmarks *= len(descriptor_data["configurations"].keys())
+
+        # Debug output
+        print(f"Total benchmarks: {len(benchmarks)}")
+        print(f"Total Capacity Miss entries: {len(cache_miss_data['Capacity Miss'])}")
+        print(f"Total Compulsory Miss entries: {len(cache_miss_data['Compulsory Miss'])}")
+        print(f"Total Conflict Miss entries: {len(cache_miss_data['Conflict Miss'])}")
+
         plot_data(benchmarks, cache_miss_data, plot_title, output_file)
 
     except Exception as e:
-        print(e)
+        print(f"Error: {e}")
+
+
 
 def plot_data(benchmarks, data, ylabel_name, fig_name, ylim=None):
     print(data)
