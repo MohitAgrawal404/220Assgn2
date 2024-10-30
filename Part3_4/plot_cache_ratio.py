@@ -36,12 +36,6 @@ def parse_cache_misses(lines):
 
 def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
     benchmarks_org = descriptor_data["workloads_list"].copy()
-    benchmarks = []
-    cache_miss_data = {
-        "Capacity Miss": [],
-        "Compulsory Miss": [],
-        "Conflict Miss": []
-    }
 
     try:
         # Create expanded data structures for grouped plotting
@@ -59,7 +53,6 @@ def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
             conflict_miss_group = []
 
             for config_key in descriptor_data["configurations"].keys():
-                benchmark_name = benchmark.split("/")[0]  # Get the first part as the benchmark name
                 exp_path = os.path.join(sim_path, benchmark, descriptor_data["experiment"], config_key)
 
                 # Parse the cache miss stats
@@ -91,9 +84,9 @@ def plot_metric(descriptor_data, sim_path, csv_name, output_file, plot_title):
 
 def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
     num_benchmarks = len(benchmarks)
-    num_configs = len(grouped_data["Capacity Miss"][0])  # Assuming all benchmarks have same number of configs
+    num_configs = len(grouped_data["Capacity Miss"][0])
 
-    ind = np.arange(num_benchmarks)  # 23 benchmark groups
+    ind = np.arange(num_benchmarks)
     width = 0.12  # Width of each bar (smaller to accommodate multiple configurations)
 
     # Initialize the figure and axis
@@ -106,22 +99,25 @@ def plot_data(benchmarks, grouped_data, ylabel_name, fig_name, ylim=None):
         conflict_miss = [group[i] for group in grouped_data["Conflict Miss"]]
 
         # Plot the stacked bars
-        bottom = np.zeros(num_benchmarks)
-        p1 = ax.bar(ind + i * width, capacity_miss, width, label=f'Capacity Miss - Config {i+1}', color='blue')
-        p3 = ax.bar(ind + i * width, conflict_miss, width, bottom=capacity_miss, label=f'Conflict Miss - Config {i+1}', color='red')
-        p2 = ax.bar(ind + i * width, compulsory_miss, width, bottom=np.array(capacity_miss) + np.array(conflict_miss), label=f'Compulsory Miss - Config {i+1}', color='green')
-
-    # Customize the labels, title, etc.
+        np.zeros(num_benchmarks)
+        ax.bar(ind + i * width, capacity_miss, width, label=f'Capacity Miss - Config {i+1}', color='blue')
+        ax.bar(ind + i * width, conflict_miss, width, bottom=capacity_miss, label=f'Conflict Miss - Config {i+1}', color='red')
+        ax.bar(ind + i * width, compulsory_miss, width, bottom=np.array(capacity_miss) + np.array(conflict_miss), label=f'Compulsory Miss - Config {i+1}', color='green')
+    
+    # Customize the labels, title, legend etc.
+    if ylim != None:
+        ax.set_ylim(ylim)
     ax.set_ylabel(ylabel_name)
     ax.set_xlabel("Benchmarks")
     ax.set_title("DCache Miss Type Ratios (Stacked)")
-    ax.set_xticks(ind + width * (num_configs / 2 - 0.5))  # Center the tick labels
-    ax.set_xticklabels(benchmarks, rotation=90)
+    ax.set_xticks(ind + width * (num_configs / 2 - 0.5))
+    ax.set_xticklabels(benchmarks, rotation=27)
+    ax.grid('x');
 
     custom_handles = [
-            plt.Rectangle((0, 0), 1, 1, color='red', label='Capacity Miss'),
+            plt.Rectangle((0, 0), 1, 1, color='blue', label='Capacity Miss'),
             plt.Rectangle((0, 0), 1, 1, color='green', label='Compulsory Miss'),
-            plt.Rectangle((0, 0), 1, 1, color='blue', label='Conflict Miss')
+            plt.Rectangle((0, 0), 1, 1, color='red', label='Conflict Miss')
         ]
         
     ax.legend(handles=custom_handles, loc='upper right', title="Cache Miss Types")
